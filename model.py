@@ -12,7 +12,7 @@ from keras.layers import Dense, Dropout, Flatten, Lambda, ELU
 from keras.layers.convolutional import Convolution2D
 
 ROOT_PATH = './'
-BATCH_SIZE = 100
+BATCH_SIZE = 64
 VERTICAL_SHIFT_NOISE = 0.05
 EPOCHS = 10
 
@@ -105,7 +105,7 @@ def get_model(time_len=1):
     model.add(ELU())
     model.add(Dense(1))
 
-    model.compile(optimizer=optimizers.Adam(lr=0.000005), loss="mse")
+    model.compile(optimizer=optimizers.Adam(lr=0.00001), loss="mse")
 
     model.summary()
 
