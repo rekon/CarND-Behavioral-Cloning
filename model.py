@@ -1,6 +1,4 @@
 import os
-import argparse
-import json
 import numpy as np
 import pandas as pd
 import skimage.transform as sktransform
@@ -14,8 +12,9 @@ from keras.layers import Dense, Dropout, Flatten, Lambda, ELU
 from keras.layers.convolutional import Convolution2D
 
 ROOT_PATH = './'
-BATCH_SIZE = 128
+BATCH_SIZE = 100
 VERTICAL_SHIFT_NOISE = 0.05
+EPOCHS = 10
 
 # Cameras we will use
 CAMERAS = ['left', 'center', 'right']
@@ -48,18 +47,18 @@ def preprocess(image, top_offset=.375, bottom_offset=.125):
 
     top = int(top_offset * image.shape[0])
     bottom = int(bottom_offset * image.shape[0])
-    image = sktransform.resize(image[top:-bottom, :], (32, 128, 3))
+    image = sktransform.resize(image[top:-bottom, :], (80, 320, 3))
     return image
 
 
-def generator(data, should_augment=True):
+def generator(data, should_augment=False):
     while True:
         # Randomize the indices to make an array
         indices_arr = np.random.permutation(data.count()[0])
         for batch in range(0, len(indices_arr), BATCH_SIZE):
             current_batch = indices_arr[batch:(batch + BATCH_SIZE)]
 
-            x_train = np.empty([0, 32, 128, 3], dtype=np.float32)
+            x_train = np.empty([0, 80, 320, 3], dtype=np.float32)
             y_train = y = np.empty([0], dtype=np.float32)
 
             for i in current_batch:
@@ -90,13 +89,10 @@ def generator(data, should_augment=True):
 
 
 def get_model(time_len=1):
-    ch, row, col = 3, 32, 128  # camera format
+    ch, row, col = 3, 80, 320  # processed format
 
     model = Sequential()
-    model.add(Lambda(lambda x: x/127.5 - 1.,
-                     input_shape=(row, col, ch),
-                     output_shape=(row, col, ch)))
-    model.add(Convolution2D(16, 8, 8, subsample=(4, 4), border_mode="same"))
+    model.add(Convolution2D(16, 8, 8, subsample=(4, 4), border_mode="same", input_shape=(row, col, ch)))
     model.add(ELU())
     model.add(Convolution2D(32, 5, 5, subsample=(2, 2), border_mode="same"))
     model.add(ELU())
@@ -109,7 +105,9 @@ def get_model(time_len=1):
     model.add(ELU())
     model.add(Dense(1))
 
-    model.compile(optimizer=optimizers.Adam(lr=1e-04), loss="mse")
+    model.compile(optimizer=optimizers.Adam(lr=0.000005), loss="mse")
+
+    model.summary()
 
     return model
 
@@ -125,7 +123,7 @@ if __name__ == "__main__":
     model.fit_generator(
         generator(d_train, True),
         samples_per_epoch=d_train.shape[0],
-        nb_epoch=5,
+        nb_epoch=EPOCHS,
         validation_data=generator(d_valid, False),
         nb_val_samples=d_valid.shape[0]
     )
