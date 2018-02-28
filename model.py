@@ -47,7 +47,8 @@ def preprocess(image, top_offset=.375, bottom_offset=.125):
 
     top = int(top_offset * image.shape[0])
     bottom = int(bottom_offset * image.shape[0])
-    image = sktransform.resize(image[top:-bottom, :], (80, 320, 3))
+    image = sktransform.resize(
+        image[top:-bottom, :], (80, 320, 3), mode='constant')
     return image
 
 
@@ -92,7 +93,8 @@ def get_model(time_len=1):
     ch, row, col = 3, 80, 320  # processed format
 
     model = Sequential()
-    model.add(Convolution2D(16, 8, 8, subsample=(4, 4), border_mode="same", input_shape=(row, col, ch)))
+    model.add(Convolution2D(16, 8, 8, subsample=(4, 4),
+                            border_mode="same", input_shape=(row, col, ch)))
     model.add(ELU())
     model.add(Convolution2D(32, 5, 5, subsample=(2, 2), border_mode="same"))
     model.add(ELU())
