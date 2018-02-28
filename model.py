@@ -80,7 +80,7 @@ def get_model(time_len=1):
     model.add(Lambda(lambda x: x/127.5 - 1.,
                      input_shape=(IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_CHANNEL),
                      output_shape=(IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_CHANNEL)))
-    model.add(Cropping2D(cropping=((60, 20), (0, 0)),
+    model.add(Cropping2D(cropping=((65, 25), (0, 0)),
                          input_shape=(IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_CHANNEL)))
     model.add(Convolution2D(16, 8, 8, subsample=(4, 4), border_mode="same"))
     model.add(ELU())
@@ -95,7 +95,7 @@ def get_model(time_len=1):
     model.add(ELU())
     model.add(Dense(1))
 
-    model.compile(optimizer=optimizers.Adam(lr=0.00001), loss="mse")
+    model.compile(optimizer="adam", loss="mse")
 
     model.summary()
 
@@ -109,15 +109,21 @@ if __name__ == "__main__":
     # Split data into training and validation sets
     d_train, d_valid = model_selection.train_test_split(data, test_size=.2)
 
+    train_gen = generator(d_train, True)
+    validation_gen = generator(d_valid, False)
+
     model = get_model()
     model.fit_generator(
-        generator(d_train, True),
+        train_gen,
         samples_per_epoch=d_train.shape[0],
         nb_epoch=EPOCHS,
-        validation_data=generator(d_valid, False),
-        nb_val_samples=d_valid.shape[0]
+        validation_data=validation_gen,
+        nb_val_samples=d_valid.shape[0],
+        verbose=1
     )
-    print("Saving model weights and configuration file.")
+    print("Saving model..")
 
-    model.save("./model.h5")
+    model.save("./model_local.h5")
+
+    print("Model Saved successfully!!")
     backend.clear_session()
