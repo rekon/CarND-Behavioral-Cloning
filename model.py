@@ -14,14 +14,14 @@ from keras.layers.convolutional import Convolution2D
 ROOT_PATH = './'
 BATCH_SIZE = 64
 VERTICAL_SHIFT_NOISE = 0.05
-EPOCHS = 10
+EPOCHS = 5
 
 # Cameras we will use
 CAMERAS = ['left', 'center', 'right']
 CAMERA_STEERING_CORRECTION = [.25, 0., -.25]
 
 
-def get_image(index, should_augment):
+def get_image(index, data, should_augment):
     camera = np.random.randint(len(CAMERAS)) if should_augment else 1
     # Read frame image and work out steering angle
     image = plt.imread(os.path.join(
@@ -62,7 +62,7 @@ def generator(data, should_augment=False):
             y_train = y = np.empty([0], dtype=np.float32)
 
             for i in current_batch:
-                [image, angle] = get_image(i, should_augment)
+                [image, angle] = get_image(i, data, should_augment)
 
                 if should_augment:
                     image = add_shadow(image)
@@ -130,8 +130,4 @@ if __name__ == "__main__":
     print("Saving model weights and configuration file.")
 
     model.save("./model.h5")
-    # model.save_weights("./model.h5", True)
-    # with open('./model.json', 'w') as outfile:
-    #     json.dump(model.to_json(), outfile)
-
     backend.clear_session()
