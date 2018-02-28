@@ -1,30 +1,32 @@
 import os
 import numpy as np
 import pandas as pd
-import skimage.transform as sktransform
 import random
-import matplotlib.image as plt
+import matplotlib.image as mpimage
 from sklearn import model_selection
 
 from keras import models, optimizers, backend
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Flatten, Lambda, ELU
+from keras.layers import Cropping2D, Dense, Dropout, Flatten, Lambda, ELU
 from keras.layers.convolutional import Convolution2D
 
 ROOT_PATH = './'
 BATCH_SIZE = 64
-VERTICAL_SHIFT_NOISE = 0.05
-EPOCHS = 5
+EPOCHS = 10
 
 # Cameras we will use
 CAMERAS = ['left', 'center', 'right']
 CAMERA_STEERING_CORRECTION = [.25, 0., -.25]
 
+IMAGE_HEIGHT = 160
+IMAGE_WIDTH = 320
+IMAGE_CHANNEL = 3
+
 
 def get_image(index, data, should_augment):
     camera = np.random.randint(len(CAMERAS)) if should_augment else 1
     # Read frame image and work out steering angle
-    image = plt.imread(os.path.join(
+    image = mpimage.imread(os.path.join(
         ROOT_PATH, data[CAMERAS[camera]].values[index].strip()))
     angle = data.steering.values[index] + CAMERA_STEERING_CORRECTION[camera]
 
@@ -43,15 +45,6 @@ def add_shadow(image):
     return image
 
 
-def preprocess(image, top_offset=.375, bottom_offset=.125):
-
-    top = int(top_offset * image.shape[0])
-    bottom = int(bottom_offset * image.shape[0])
-    image = sktransform.resize(
-        image[top:-bottom, :], (80, 320, 3), mode='constant')
-    return image
-
-
 def generator(data, should_augment=False):
     while True:
         # Randomize the indices to make an array
@@ -59,7 +52,8 @@ def generator(data, should_augment=False):
         for batch in range(0, len(indices_arr), BATCH_SIZE):
             current_batch = indices_arr[batch:(batch + BATCH_SIZE)]
 
-            x_train = np.empty([0, 80, 320, 3], dtype=np.float32)
+            x_train = np.empty(
+                [0, IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_CHANNEL], dtype=np.float32)
             y_train = y = np.empty([0], dtype=np.float32)
 
             for i in current_batch:
@@ -67,15 +61,6 @@ def generator(data, should_augment=False):
 
                 if should_augment:
                     image = add_shadow(image)
-                    image = preprocess(
-                        image,
-                        top_offset=random.uniform(
-                            .375 - VERTICAL_SHIFT_NOISE, .375 + VERTICAL_SHIFT_NOISE),
-                        bottom_offset=random.uniform(.125 -
-                                                     VERTICAL_SHIFT_NOISE, .125 + VERTICAL_SHIFT_NOISE)
-                    )
-                else:
-                    image = preprocess(image)
 
                 # Appending to existing batch
                 x_train = np.append(x_train, [image], axis=0)
@@ -90,11 +75,14 @@ def generator(data, should_augment=False):
 
 
 def get_model(time_len=1):
-    ch, row, col = 3, 80, 320  # processed format
 
     model = Sequential()
-    model.add(Convolution2D(16, 8, 8, subsample=(4, 4),
-                            border_mode="same", input_shape=(row, col, ch)))
+    model.add(Lambda(lambda x: x/127.5 - 1.,
+                     input_shape=(IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_CHANNEL),
+                     output_shape=(IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_CHANNEL)))
+    model.add(Cropping2D(cropping=((60, 20), (0, 0)),
+                         input_shape=(IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_CHANNEL)))
+    model.add(Convolution2D(16, 8, 8, subsample=(4, 4), border_mode="same"))
     model.add(ELU())
     model.add(Convolution2D(32, 5, 5, subsample=(2, 2), border_mode="same"))
     model.add(ELU())
