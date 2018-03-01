@@ -45,7 +45,7 @@ def generator(data, should_augment=False):
             #initializing the arrays, x_train and y_train
             x_train = np.empty(
                 [0, IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_CHANNEL], dtype=np.float32)
-            y_train = y = np.empty([0], dtype=np.float32)
+            y_train = np.empty([0], dtype=np.float32)
 
             for i in current_batch:
                 #get an image and its corresponding steering angle for an image
